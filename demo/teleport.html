@@ -10,13 +10,17 @@
 
 	<script type="module">
 		import * as THREE from 'three';
+		// 鼠标控制器
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+		// 模型加载器
 		import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+		// 寻路插件
 		import { Pathfinding, PathfindingHelper, } from 'three-pathfinding';
 		import './components/demo-sidebar';
 
 		THREE.ColorManagement.enabled = true;
 
+		// 颜色
 		const Color = {
 			GROUND: 0x606060,
 			NAVMESH: 0xFFFFFF,
@@ -30,14 +34,25 @@
 
 		let groupID, path;
 
+		//  球员的位置
 		const playerPosition = new THREE.Vector3( -3.5, 0.5, 5.5 );
+		// 目标位置
 		const targetPosition = new THREE.Vector3();
 
 		const pathfinder = new Pathfinding();
 		const helper = new PathfindingHelper();
+
+		// 渲染时钟
 		const clock = new THREE.Clock();
+        // 鼠标
 		const mouse = new THREE.Vector2();
+		// 鼠标按下
 		const mouseDown = new THREE.Vector2();
+		/*
+		
+		在Three.js中，Raycaster类是实现这一功能的关键。它允许你创建一个射线，
+		并提供方法来检测这个射线与场景中对象的交点。以下是使用Raycaster的基本步骤：
+		*/
 		const raycaster = new THREE.Raycaster();
 
 		const scene = new THREE.Scene();
@@ -144,6 +159,10 @@
 
 			raycaster.setFromCamera( mouse, camera );
 
+			/*
+			射线交叉对象
+              创建的光线投射对象有一个intersectObject()方法用来获取射线交叉的对象，使用方法如下
+			*/
 			const intersects = raycaster.intersectObject( navmesh );
 
 			if ( !intersects.length ) return;

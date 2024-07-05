@@ -40,6 +40,7 @@
 		const targetPosition = new THREE.Vector3();
 
 		const pathfinder = new Pathfinding();
+		// 玩家类
 		const helper = new PathfindingHelper();
 
 		// 渲染时钟
@@ -55,14 +56,17 @@
 		*/
 		const raycaster = new THREE.Raycaster();
 
+		// 创建场景
 		const scene = new THREE.Scene();
 		scene.add( helper );
 
+		// 投影矩阵
 		const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
 		camera.position.x = -10;
 		camera.position.y = 14;
 		camera.position.z = 10;
 
+		// 渲染器
 		const renderer = new THREE.WebGLRenderer();
 		renderer.setPixelRatio( window.devicePixelRatio );
 		renderer.setSize( window.innerWidth, window.innerHeight );
@@ -70,12 +74,15 @@
 		renderer.outputEncoding = THREE.sRGBEncoding;
 		document.body.appendChild( renderer.domElement );
 
+
+        // 控制器
 		const controls = new OrbitControls( camera, renderer.domElement );
 		controls.damping = 0.2;
 
+		 //  环境光  会均匀的照亮场景中的所有物体。
 		const ambient = new THREE.AmbientLight( 0x101030 );
 		scene.add( ambient );
-
+        // DirectionalLightHelper：可视化平行光
 		const directionalLight = new THREE.DirectionalLight( 0xFFEEDD );
 		directionalLight.position.set( 0, 0.5, 0.5 );
 		scene.add( directionalLight );
@@ -83,50 +90,80 @@
 		init();
 		animate();
 
+		// 初始化
 		async function init() {
 
+			// 模型加载器
 			const gltfLoader = new GLTFLoader();
 
 			gltfLoader.load( '/level.glb', function( gltf ) {
 
+				// 获取名称为 Cube 模型
 				const levelMesh = gltf.scene.getObjectByName('Cube');
+
 				const levelMat = new THREE.MeshStandardMaterial({
 					color: Color.GROUND,
 					flatShading: true,
 					roughness: 1,
 					metalness: 0
 				});
+
+				// 获取 模型 level
 				level = new THREE.Mesh(levelMesh.geometry, levelMat);
+
 				window.level = level;
+				// 把模型添加到场景中
 				scene.add(level);
 			}, null);
 
+			// 加载模型
 			gltfLoader.load( '/level.nav.glb', function( gltf ) {
 
+				//获取模型名称为Navmesh_Mesh的模型
 				const _navmesh = gltf.scene.getObjectByName('Navmesh_Mesh');
 
 				console.time('createZone()');
-				const zone = Pathfinding.createZone(_navmesh.geometry);
-				console.timeEnd('createZone()');
 
+				// (静态)从导航网格几何构造一个区域/节点集。
+				const zone = Pathfinding.createZone(_navmesh.geometry);
+
+				console.timeEnd('createZone()');
+				// 为给定区域设置数据。
 				pathfinder.setZoneData( ZONE, zone );
 
-				const navWireframe = new THREE.Mesh(_navmesh.geometry, new THREE.MeshBasicMaterial({
-					color: 0x808080,
-					wireframe: true
-				}));
+				// 根据几何体和材质创建物体
+				const navWireframe = new THREE.Mesh(
+					    _navmesh.geometry, 
+				        // 材质对象 Material
+						new THREE.MeshBasicMaterial({
+							color: 0x808080,
+							wireframe: true
+						})
+			     );
+
+				 // 设置模型y轴
 				navWireframe.position.y = OFFSET / 2;
+
+				// 将模型放入到场景中
 				scene.add(navWireframe);
 
-				navmesh = new THREE.Mesh(_navmesh.geometry, new THREE.MeshBasicMaterial({
-					color: Color.NAVMESH,
-					opacity: 0.75,
-					transparent: true
-				}));
 
+
+	           // 根据几何体和材质创建物体
+				navmesh = new THREE.Mesh(
+						 _navmesh.geometry, 
+					     // 材质对象 Material
+						new THREE.MeshBasicMaterial({
+							color: Color.NAVMESH,
+							opacity: 0.75,
+							transparent: true
+						})
+			       );
+                // 将模型放入到场景中
 				scene.add(navmesh);
 
 				// Set the player's navigation mesh group
+				//设置玩家的导航网格组
 				groupID = pathfinder.getGroup( ZONE, playerPosition );
 
 			}, null);
@@ -134,13 +171,18 @@
 			helper
 				.setPlayerPosition( new THREE.Vector3( -3.5, 0.5, 5.5 ) )
 				.setTargetPosition( new THREE.Vector3( -3.5, 0.5, 5.5 ) );
-
+		    // pointerdown – 当鼠标指针按下时触发。
 			document.addEventListener( 'pointerdown', onDocumentPointerDown, false );
+
+			// pointerup – 当鼠标指针松开时触发。
 			document.addEventListener( 'pointerup', onDocumentPointerUp, false );
+
+			// 改变屏幕大小触发
 			window.addEventListener( 'resize', onWindowResize, false );
 
 		}
 
+		// 归一化坐标
 		function onDocumentPointerDown (event) {
 
 			mouseDown.x = ( event.clientX / window.innerWidth ) * 2 - 1;
@@ -148,32 +190,42 @@
 
 		}
 
+		// 鼠标抬起事件
 		function onDocumentPointerUp (event) {
 
 			mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
 			mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 
-			if ( Math.abs( mouseDown.x - mouse.x ) > 0 || Math.abs( mouseDown.y - mouse.y ) > 0 ) return; // Prevent unwanted click when rotate camera.
-
+			// 防止旋转相机时不必要的点击。 就是在拖拽 移动时候不触发 人物行走
+			if ( Math.abs( mouseDown.x - mouse.x ) > 0 || Math.abs( mouseDown.y - mouse.y ) > 0 ) {
+				return; // Prevent unwanted click when rotate camera.
+			} 
+			// 更新矩阵世界 更新相机矩阵
 			camera.updateMatrixWorld();
 
 			raycaster.setFromCamera( mouse, camera );
 
 			/*
 			射线交叉对象
-              创建的光线投射对象有一个intersectObject()方法用来获取射线交叉的对象，使用方法如下
+            创建的光线投射对象有一个intersectObject()方法用来获取射线交叉的对象，使用方法如下
 			*/
 			const intersects = raycaster.intersectObject( navmesh );
 
-			if ( !intersects.length ) return;
+			// 如果点击不到模型
+			if ( !intersects.length ){
+				return;
+			} 
 
+			// 复制模型位置
 			targetPosition.copy( intersects[0].point );
 
+			// 
 			helper
 				.reset()
 				.setPlayerPosition( playerPosition );
 
 			// Teleport on ctrl/cmd click or RMB.
+			// 传送按ctrl/cmd 点击或 人民币。
 			if (event.metaKey || event.ctrlKey || event.button === 2) {
 
 				path = null;
@@ -194,6 +246,7 @@
 			if (closestTargetNode) helper.setNodePosition( closestTargetNode.centroid );
 
 			// Calculate a path to the target and store it
+			//计算到目标的路径并存储
 			path = pathfinder.findPath( playerPosition, targetPosition, ZONE, groupID );
 
 			if ( path && path.length ) {
@@ -244,6 +297,7 @@
 				helper.setPlayerPosition( playerPosition );
 			} else {
 				// Remove node from the path we calculated
+				// 从我们计算的路径中移除节点
 				path.shift();
 			}
 		}
